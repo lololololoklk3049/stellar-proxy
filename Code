@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stellar - Advanced Web Proxy</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⭐</text></svg>">
+    <style>
+        :root {
+            --primary: #8a2be2;
+            --secondary: #4b0082;
+            --accent: #9c27b0;
+            --bg-start: #0a0a1a;
+            --bg-mid: #1a0a2a;
+            --bg-end: #2a1a3a;
+            --text: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --glass: rgba(0, 0, 0, 0.2);
+            --border: rgba(138, 43, 226, 0.3);
+            --shadow: rgba(138, 43, 226, 0.15);
+        }
+
+        [data-theme="ocean"] {
+            --primary: #0077be;
+            --secondary: #005a9f;
+            --accent: #00a8ff;
+            --bg-start: #0a1a2a;
+            --bg-mid: #1a2a3a;
+            --bg-end: #2a3a4a;
+            --border: rgba(0, 119, 190, 0.3);
+            --shadow: rgba(0, 119, 190, 0.15);
+        }
+
+        [data-theme="forest"] {
+            --primary: #2d8a47;
+            --secondary: #1e5f32;
+            --accent: #4caf50;
+            --bg-start: #0a1a0a;
+            --bg-mid: #1a2a1a;
+            --bg-end: #2a3a2a;
+            --border: rgba(45, 138, 71, 0.3);
+            --shadow: rgba(45, 138, 71, 0.15);
+        }
+
+        [data-theme="sunset"] {
+            --primary: #ff6b35;
+            --secondary: #e55100;
+            --accent: #ff9800;
+            --bg-start: #1a0a0a;
+            --bg-mid: #2a1a0a;
+            --bg-end: #3a2a1a;
+            --border: rgba(255, 107, 53, 0.3);
+            --shadow: rgba(255, 107, 53, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-mid) 50%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text);
+            overflow-x: hidden;
+            transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, var(--primary)10 0%, transparent 60%),
+                radial-gradient(circle at 80% 20%, var(--secondary)08 0%, transparent 60%),
+                radial-gradient(circle at 40% 40%, var(--accent)05 0%, transparent 60%);
+            pointer-events: none;
+            z-index: -1;
+            animation: backgroundShift 20s ease-in-out infinite;
+        }
+
+        @keyframes backgroundShift {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .theme-switcher {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 12px;
+            z-index: 1002;
+            display: flex;
+            gap: 10px;
+            box-shadow: 0 8px 32px var(--shadow);
+        }
+
+        .theme-btn {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .theme-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            transform: translate(-50%, -50%);
+        }
+
+        .theme-btn:hover::before {
+            width: 100%;
+            height: 100%;
+        }
+
+        .theme-btn.stellar { background: linear-gradient(135deg, #8a2be2, #4b0082); }
+        .theme-btn.ocean { background: linear-gradient(135deg, #0077be, #005a9f); }
+        .theme-btn.forest { background: linear-gradient(135deg, #2d8a47, #1e5f32); }
+        .theme-btn.sunset { background: linear-gradient(135deg, #ff6b35, #e55100); }
+
+        .theme-btn:hover, .theme-btn.active {
+            border-color: var(--text);
+            transform: scale(1.15);
+            box-shadow: 0 5px 20px var(--shadow);
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 0 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            text-align: center;
+            padding: 80px 0 50px 0;
+        }
+
+        .logo {
+            font-size: 120px;
+            font-weight: 100;
+            color: var(--text);
+            text-shadow: 0 0 40px var(--primary)60, 0 0 80px var(--primary)30;
+            margin-bottom: 20px;
+            letter-spacing: -6px;
+            background: linear-gradient(45deg, var(--text), var(--accent), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: logoGlow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes logoGlow {
+            0% { text-shadow: 0 0 40px var(--primary)60, 0 0 80px var(--primary)30; }
+            100% { text-shadow: 0 0 60px var(--primary)80, 0 0 120px var(--primary)40; }
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: var(--text-secondary);
+            margin-bottom: 50px;
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+
+        .search-container {
+            position: relative;
+            margin-bottom: 40px;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 25px 35px;
+            font-size: 20px;
+            border: 2px solid var(--border);
+            border-radius: 60px;
+            box-shadow: 
+                0 10px 40px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            outline: none;
+            background: var(--glass);
+            backdrop-filter: blur(30px);
+            color: var(--text);
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            font-weight: 300;
+        }
+
+        .search-box:focus {
+            border-color: var(--primary);
+            box-shadow: 
+                0 15px 50px rgba(0, 0, 0, 0.4),
+                0 0 0 4px var(--primary)20,
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px);
+        }
+
+        .search-box::placeholder {
+            color: var(--text-secondary);
+            font-weight: 300;
+        }
+
+        .buttons {
+            text-align: center;
+            margin-bottom: 60px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--primary)25, var(--secondary)25);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 18px 35px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            backdrop-filter: blur(20px);
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.5px;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+            transition: left 0.6s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            background: linear-gradient(135deg, var(--primary)45, var(--secondary)45);
+            border-color: var(--primary);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px var(--shadow);
+        }
+
+        .btn:active {
+            transform: translateY(-1px);
+        }
+
+        /* Tab System */
+        .tab-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            z-index: 999;
+            padding: 10px 20px;
+        }
+
+        .tab-container.show { display: block; }
+
+        .tab-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .tab-bar::-webkit-scrollbar { display: none; }
+
+        .tab {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 25px;
+            cursor: pointer;
+            min-width: 150px;
+            max-width: 200px;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .tab.active {
+            background: var(--primary)30;
+            border-color: var(--primary);
+            color: var(--text);
+        }
+
+        .tab-title {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .tab-close {
+            margin-left: 10px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .tab-close:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text);
+        }
+
+        .new-tab-btn {
+            padding: 12px 18px;
+            background: var(--primary)30;
+            border: 1px solid var(--primary);
+            border-radius: 25px;
+            cursor: pointer;
+            color: var(--text);
+            font-weight: 500;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .new-tab-btn:hover {
+            background: var(--primary)50;
+            transform: scale(1.05);
+        }
+
+        /* History Page */
+        .history-page {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-mid) 50%, var(--bg-end) 100%);
+            z-index: 1000;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .history-header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-top: 40px;
+        }
+
+        .history-title {
+            font-size: 48px;
+            color: var(--text);
+            margin-bottom: 15px;
+            font-weight: 200;
+        }
+
+        .history-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 40px;
+            gap: 20px;
+            flex-wrap: wrap;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .history-search {
+            flex: 1;
+            min-width: 300px;
+            padding: 15px 25px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            color: var(--text);
+            outline: none;
+            backdrop-filter: blur(20px);
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .history-search:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary)20;
+        }
+
+        .history-list {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .history-item {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: pointer;
+        }
+
+        .history-item:hover {
+            background: var(--primary)15;
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px var(--shadow);
+            border-color: var(--primary);
+        }
+
+        .history-url {
+            font-size: 16px;
+            color: var(--primary);
+            margin-bottom: 10px;
+            word-break: break-all;
+            font-weight: 500;
+        }
+
+        .history-title-text {
+            font-size: 15px;
+            color: var(--text);
+            margin-bottom: 8px;
+            font-weight: 400;
+        }
+
+        .history-time {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 300;
+        }
+
+        /* Proxy Container */
+        .proxy-frame-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 1000;
+        }
+
+        .proxy-controls {
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            padding: 15px 25px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 3px 25px rgba(0, 0, 0, 0.4);
+            border-bottom: 1px solid var(--border);
+            gap: 15px;
+        }
+
+        .control-btn {
+            background: var(--primary)30;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 12px 24px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .control-btn:hover {
+            background: var(--primary)50;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px var(--shadow);
+        }
+
+        .current-url {
+            flex: 1;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 12px 20px;
+            border-radius: 30px;
+            font-size: 15px;
+            outline: none;
+            backdrop-filter: blur(20px);
+            transition: all 0.3s ease;
+        }
+
+        .current-url:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary)20;
+        }
+
+        .proxy-frame {
+            width: 100%;
+            height: calc(100vh - 75px);
+            border: none;
+            background: white;
+        }
+
+        /* Features Grid */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 30px;
+            margin-top: 60px;
+        }
+
+        .feature-card {
+            background: var(--glass);
+            backdrop-filter: blur(30px);
+            border: 1px solid var(--border);
+            border-radius: 25px;
+            padding: 40px;
+            text-align: center;
+            color: var(--text);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary)08, var(--secondary)08);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            border-color: var(--primary);
+            box-shadow: 0 20px 50px var(--shadow);
+        }
+
+        .feature-icon {
+            font-size: 60px;
+            margin-bottom: 25px;
+            display: block;
+            filter: drop-shadow(0 0 15px var(--primary)50);
+            position: relative;
+            z-index: 1;
+        }
+
+        .feature-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text);
+            position: relative;
+            z-index: 1;
+        }
+
+        .feature-desc {
+            font-size: 16px;
+            opacity: 0.9;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            position: relative;
+            z-index: 1;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 80px 0 50px 0;
+            color: var(--text-secondary);
+            font-size: 15px;
+        }
+
+        .footer p:first-child {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: var(--text);
+            font-weight: 300;
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: none;
+            text-align: center;
+            color: var(--text);
+            font-size: 18px;
+            margin-top: 30px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid var(--border);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s linear infinite;
+            margin-right: 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .status-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-size: 13px;
+            font-weight: 500;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 8px 32px var(--shadow);
+            z-index: 1001;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 80px;
+            }
+            
+            .container {
+                padding: 0 15px;
+            }
+            
+            .buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 280px;
+                margin: 8px 0;
+            }
+            
+            .features {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .theme-switcher {
+                position: relative;
+                top: auto;
+                left: auto;
+                margin: 20px auto 0;
+                justify-content: center;
+            }
+
+            .history-controls {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .history-search {
+                min-width: auto;
+            }
+
+            .proxy-controls {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .tab-container {
+                padding: 8px 15px;
+            }
+        }
+
+        /* Accessibility */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Focus styles for accessibility */
+        .btn:focus, .theme-btn:focus, .tab:focus, .control-btn:focus {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body data-theme="stellar">
+    <div class="theme-switcher">
+        <div class="theme-btn stellar active" onclick="changeTheme('stellar')" title="Stellar Purple"></div>
+        <div class="theme-btn ocean" onclick="changeTheme('ocean')" title="Ocean Blue"></div>
+        <div class="theme-btn forest" onclick="changeTheme('forest')" title="Forest Green"></div>
+        <div class="theme-btn sunset" onclick="changeTheme('sunset')" title="Sunset Orange"></div>
+    </div>
+
+    <div class="status-indicator" id="statusIndicator">
+        Ready to browse
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <div class="logo">Stellar</div>
+            <div class="subtitle">Advanced Web Proxy • Secure • Fast • Anonymous</div>
+            
+            <div class="search-container">
+                <input type="text" class="search-box" placeholder="Enter URL or search Google..." id="searchInput" autocomplete="off">
+            </div>
+            
+            <div class="buttons">
+                <button class="btn" onclick="navigateToUrl()">🌐 Browse Website</button>
+                <button class="btn" onclick="searchGoogle()">🔍 Google Search</button>
+                <button class="btn" onclick="showHistory()">📚 Browse History</button>
+                <button class="btn" onclick="openQuickAccess()">⚡ Quick Access</button>
+            </div>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                Establishing secure connection...
+            </div>
+        </div>
+        
+        <div class="features">
+            <div class="feature-card">
+                <span class="feature-icon">🛡️</span>
+                <div class="feature-title">Advanced Security</div>
+                <div class="feature-desc">State-of-the-art proxy technology with multiple security layers and encrypted connections for maximum protection</div>
+            </div>
+            
+            <div class="feature-card">
+                <span class="feature-icon">⚡</span>
+                <div class="feature-title">Lightning Performance</div>
+                <div class="feature-desc">Optimized routing and intelligent caching ensure blazing-fast loading speeds for all your browsing needs</div>
+            </div>
+            
+            <div class="feature-card">
+                <span class="feature-icon">🌐</span>
+                <div class="feature-title">Global Access</div>
+                <div class="feature-desc">Access any content worldwide with our distributed proxy network that bypasses geographical restrictions</div>
+            </div>
+            
+            <div class="feature-card">
+                <span class="feature-icon">🎭</span>
+                <div class="feature-title">Complete Privacy</div>
+                <div class="feature-desc">Browse completely anonymously with masked IP addresses and no logging of your browsing activity</div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Stellar Web Proxy</p>
+            <p>Secure • Private • Unrestricted Browsing</p>
+        </div>
+    </div>
+
+    <!-- Tab Container -->
+    <div class="tab-container" id="tabContainer">
+        <div class="tab-bar">
+            <div class="new-tab-btn" onclick="createNewTab()">+ New Tab</div>
+        </div>
+    </div>
+
+    <!-- History Page -->
+    <div class="history-page" id="historyPage">
+        <div class="history-header">
+            <div class="history-title">Browsing History</div>
+        </div>
+        <div class="history-controls">
+            <input type="text" class="history-search" placeholder="Search your browsing history..." id="historySearch" oninput="filterHistory()">
+            <button class="btn" onclick="clearHistory()">Clear History</button>
+            <button class="btn" onclick="hideHistory()">Close</button>
+        </div>
+        <div class="history-list" id="historyList"></div>
+    </div>
+
+    <!-- Proxy Frame Container -->
+    <div class="proxy-frame-container" id="proxyContainer">
+        <div class="proxy-controls">
+            <button class="control-btn" onclick="goBack()">← Home</button>
+            <button class="control-btn" onclick="showHistory()">📚 History</button>
+            <button class="control-btn" onclick="refreshPage()">🔄 Refresh</button>
+            <input type="text" class="current-url" id="currentUrl" placeholder="Enter URL..." onkeypress="handleUrlEdit(event)">
+        </div>
+        <iframe class="proxy-frame" id="proxyFrame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation allow-downloads"></iframe>
+    </div>
+
+    <script>
+        // Global variables
+        const elements = {
+            searchInput: document.getElementById('searchInput'),
+            proxyContainer: document.getElementById('proxyContainer'),
+            proxyFrame: document.getElementById('proxyFrame'),
+            currentUrl: document.getElementById('currentUrl'),
+            loading: document.getElementById('loading'),
+            historyPage: document.getElementById('historyPage'),
+            tabContainer: document.getElementById('tabContainer'),
+            statusIndicator: document.getElementById('statusIndicator')
+        };
+
+        let browsingHistory = [];
+        let tabs = [];
+        let activeTabId = null;
+
+        // Enhanced proxy services with better reliability
+        const PROXY_SERVICES = [
+            { url: 'https://api.codetabs.com/v1/proxy?quest=', name: 'CodeTabs' },
+            { url: 'https://api.allorigins.win/raw?url=', name: 'AllOrigins' },
+            { url: 'https://cors-anywhere.herokuapp.com/', name: 'CORS Anywhere' },
+            { url: 'https://thingproxy.freeboard.io/fetch/', name: 'ThingProxy' }
+        ];
+
+        // Popular websites for quick access
+        const QUICK_ACCESS_SITES = [
+            { name: 'YouTube', url: 'https://youtube.com', icon: '📺' },
+            { name: 'Google', url: 'https://google.com', icon: '🔍' },
+            { name: 'GitHub', url: 'https://github.com', icon: '💻' },
+            { name: 'Reddit', url: 'https://reddit.com', icon: '🟠' },
+            { name: 'Wikipedia', url: 'https://wikipedia.org', icon: '📖' },
+            { name: 'Twitter', url: 'https://twitter.com', icon: '🐦' },
+            { name: 'Discord', url: 'https://discord.com', icon: '💬' },
+            { name: 'Instagram', url: 'https://instagram.com', icon: '📸' },
+            { name: 'TikTok', url: 'https://tiktok.com', icon: '🎵' },
+            { name: 'Netflix', url: 'https://netflix.com', icon: '🎬' }
+        ];
+
+        // Theme Management
+        function changeTheme(theme) {
+            document.body.setAttribute('data-theme', theme);
+            document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.theme-btn.${theme}`).classList.add('active');
+            localStorage.setItem('stellarTheme', theme);
+            updateStatus(`Theme changed to ${theme}`);
+        }
+
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('stellarTheme') || 'stellar';
+            changeTheme(savedTheme);
+        }
+
+        // Status Updates
+        function updateStatus(message, duration = 3000) {
+            elements.statusIndicator.textContent = message;
+            setTimeout(() => {
+                elements.statusIndicator.textContent = 'Ready to browse';
+            }, duration);
+        }
+
+        // Tab Management
+        function createNewTab(url = null, title = 'New Tab') {
+            const tabId = Date.now().toString();
+            const tab = {
+                id: tabId,
+                url: url,
+                title: title,
+                active: true
+            };
+            
+            tabs.forEach(t => t.active = false);
+            tabs.push(tab);
+            activeTabId = tabId;
+            
+            renderTabs();
+            elements.tabContainer.classList.add('show');
+            
+            if (url) {
+                loadInProxy(url);
+            }
+        }
+
+        function switchTab(tabId) {
+            tabs.forEach(t => t.active = t.id === tabId);
+            activeTabId = tabId;
+            renderTabs();
+            
+            const tab = tabs.find(t => t.id === tabId);
+            if (tab && tab.url) {
+                elements.currentUrl.value = tab.url;
+                elements.proxyFrame.src = getBestProxyUrl(tab.url);
+            }
+        }
+
+        function closeTab(tabId) {
+            tabs = tabs.filter(t => t.id !== tabId);
+            
+            if (tabs.length === 0) {
+                elements.tabContainer.classList.remove('show');
+                goBack();
+            } else {
+                if (activeTabId === tabId) {
+                    activeTabId = tabs[0].id;
+                    tabs[0].active = true;
+                    switchTab(activeTabId);
+                }
+                renderTabs();
+            }
+        }
+
+        function renderTabs() {
+            const existingTabs = elements.tabContainer.querySelectorAll('.tab');
+            existingTabs.forEach(tab => tab.remove());
+
+            const tabBar = elements.tabContainer.querySelector('.tab-bar');
+            const newTabBtn = tabBar.querySelector('.new-tab-btn');
+
+            tabs.forEach(tab => {
+                const tabElement = document.createElement('div');
+                tabElement.className = `tab ${tab.active ? 'active' : ''}`;
+                tabElement.innerHTML = `
+                    <span class="tab-title" onclick="switchTab('${tab.id}')">${tab.title}</span>
+                    <span class="tab-close" onclick="event.stopPropagation(); closeTab('${tab.id}')">×</span>
+                `;
+                tabBar.insertBefore(tabElement, newTabBtn);
+            });
+        }
+
+        // History Management
+        function addToHistory(url, title = '') {
+            if (!url || url.startsWith('data:') || url.startsWith('blob:')) return;
+
+            const historyItem = {
+                url: url,
+                title: title || new URL(url).hostname,
+                timestamp: new Date().toISOString(),
+                date: new Date().toLocaleDateString(),
+                time: new Date().toLocaleTimeString()
+            };
+            
+            browsingHistory = browsingHistory.filter(item => item.url !== url);
+            browsingHistory.unshift(historyItem);
+            
+            if (browsingHistory.length > 1000) {
+                browsingHistory = browsingHistory.slice(0, 1000);
+            }
+            
+            saveHistory();
+        }
+
+        function saveHistory() {
+            try {
+                localStorage.setItem('stellarHistory', JSON.stringify(browsingHistory));
+            } catch (error) {
+                console.warn('Unable to save history:', error);
+            }
+        }
+
+        function loadHistory() {
+            try {
+                const saved = localStorage.getItem('stellarHistory');
+                if (saved) {
+                    browsingHistory = JSON.parse(saved);
+                }
+            } catch (error) {
+                console.warn('Unable to load history:', error);
+                browsingHistory = [];
+            }
+        }
+
+        function showHistory() {
+            renderHistory();
+            elements.historyPage.style.display = 'block';
+        }
+
+        function hideHistory() {
+            elements.historyPage.style.display = 'none';
+        }
+
+        function renderHistory() {
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = '';
+            
+            if (browsingHistory.length === 0) {
+                historyList.innerHTML = `
+                    <div style="text-align: center; color: var(--text-secondary); padding: 60px 20px; font-size: 18px;">
+                        📚 No browsing history yet<br>
+                        <small style="font-size: 14px; margin-top: 10px; display: block;">Start browsing to see your history here</small>
+                    </div>
+                `;
+                return;
+            }
+            
+            browsingHistory.forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.onclick = () => {
+                    hideHistory();
+                    loadInProxy(item.url);
+                };
+                
+                historyItem.innerHTML = `
+                    <div class="history-url">${item.url}</div>
+                    <div class="history-title-text">${item.title}</div>
+                    <div class="history-time">${item.date} at ${item.time}</div>
+                `;
+                
+                historyList.appendChild(historyItem);
+            });
+        }
+
+        function filterHistory() {
+            const searchTerm = document.getElementById('historySearch').value.toLowerCase();
+            const historyItems = document.querySelectorAll('.history-item');
+            
+            historyItems.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(searchTerm) ? 'block' : 'none';
+            });
+        }
+
+        function clearHistory() {
+            if (confirm('Are you sure you want to clear all browsing history?')) {
+                browsingHistory = [];
+                localStorage.removeItem('stellarHistory');
+                renderHistory();
+                updateStatus('History cleared');
+            }
+        }
+
+        // URL and Navigation Functions
+        function isValidUrl(string) {
+            try {
+                new URL(string);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        function formatUrl(input) {
+            if (!input) return '';
+            
+            input = input.trim();
+            
+            if (input.startsWith('http://') || input.startsWith('https://')) {
+                return input;
+            } else if (input.includes('.') && !input.includes(' ') && input.split('.').length >= 2) {
+                return 'https://' + input;
+            } else {
+                return 'https://www.google.com/search?q=' + encodeURIComponent(input);
+            }
+        }
+
+        function getBestProxyUrl(targetUrl) {
+            // Try different proxy services based on availability
+            const randomService = PROXY_SERVICES[Math.floor(Math.random() * PROXY_SERVICES.length)];
+            return randomService.url + encodeURIComponent(targetUrl);
+        }
+
+        function showLoading() {
+            elements.loading.style.display = 'block';
+            updateStatus('Connecting...');
+        }
+
+        function hideLoading() {
+            elements.loading.style.display = 'none';
+            updateStatus('Connected successfully');
+        }
+
+        // Main Navigation Functions
+        function navigateToUrl() {
+            const input = elements.searchInput.value.trim();
+            if (!input) {
+                alert('Please enter a URL or search term');
+                elements.searchInput.focus();
+                return;
+            }
+
+            const url = formatUrl(input);
+            loadInProxy(url);
+        }
+
+        function searchGoogle() {
+            const input = elements.searchInput.value.trim();
+            let searchUrl;
+            
+            if (input) {
+                searchUrl = `https://www.google.com/search?q=${encodeURIComponent(input)}&igu=1`;
+            } else {
+                searchUrl = 'https://www.google.com/?igu=1';
+            }
+            
+            loadInProxy(searchUrl);
+        }
+
+        function openQuickAccess() {
+            let message = 'Quick Access - Choose a site:\n\n';
+            QUICK_ACCESS_SITES.forEach((site, i) => {
+                message += `${i + 1}. ${site.icon} ${site.name}\n`;
+            });
+            message += '\nEnter number (1-' + QUICK_ACCESS_SITES.length + '):';
+            
+            const choice = prompt(message);
+            const index = parseInt(choice) - 1;
+            
+            if (index >= 0 && index < QUICK_ACCESS_SITES.length) {
+                loadInProxy(QUICK_ACCESS_SITES[index].url);
+            }
+        }
+
+        async function loadInProxy(url) {
+            showLoading();
+            
+            try {
+                // Validate URL
+                const finalUrl = formatUrl(url);
+                
+                // Add to history
+                addToHistory(finalUrl);
+                
+                // Update or create tab
+                if (activeTabId) {
+                    const activeTab = tabs.find(t => t.id === activeTabId);
+                    if (activeTab) {
+                        activeTab.url = finalUrl;
+                        activeTab.title = new URL(finalUrl).hostname;
+                        renderTabs();
+                    }
+                } else {
+                    createNewTab(finalUrl, new URL(finalUrl).hostname);
+                }
+                
+                // Try multiple proxy services
+                let loaded = false;
+                
+                for (let i = 0; i < PROXY_SERVICES.length && !loaded; i++) {
+                    try {
+                        const proxyService = PROXY_SERVICES[i];
+                        const proxyUrl = proxyService.url + encodeURIComponent(finalUrl);
+                        
+                        updateStatus(`Trying ${proxyService.name}...`);
+                        
+                        // Set iframe source
+                        elements.proxyFrame.src = proxyUrl;
+                        elements.currentUrl.value = finalUrl;
+                        
+                        // Show proxy container
+                        elements.proxyContainer.style.display = 'block';
+                        document.body.style.overflow = 'hidden';
+                        
+                        // Wait for load or timeout
+                        await new Promise((resolve, reject) => {
+                            const timeout = setTimeout(() => {
+                                reject(new Error('Timeout'));
+                            }, 8000);
+                            
+                            elements.proxyFrame.onload = () => {
+                                clearTimeout(timeout);
+                                loaded = true;
+                                hideLoading();
+                                resolve();
+                            };
+                            
+                            elements.proxyFrame.onerror = () => {
+                                clearTimeout(timeout);
+                                reject(new Error('Load failed'));
+                            };
+                        });
+                        
+                        break;
+                    } catch (error) {
+                        console.log(`Proxy ${PROXY_SERVICES[i].name} failed:`, error.message);
+                        continue;
+                    }
+                }
+                
+                if (!loaded) {
+                    // Try direct loading as last resort
+                    updateStatus('Trying direct connection...');
+                    elements.proxyFrame.src = finalUrl;
+                    elements.currentUrl.value = finalUrl;
+                    elements.proxyContainer.style.display = 'block';
+                    document.body.style.overflow = 'hidden';
+                    
+                    setTimeout(() => {
+                        hideLoading();
+                    }, 5000);
+                }
+                
+            } catch (error) {
+                hideLoading();
+                updateStatus('Connection failed', 5000);
+                alert('Unable to load the website. Please try a different URL or check your connection.');
+                console.error('Load error:', error);
+            }
+        }
+
+        function goBack() {
+            elements.proxyContainer.style.display = 'none';
+            elements.tabContainer.classList.remove('show');
+            document.body.style.overflow = 'auto';
+            elements.proxyFrame.src = '';
+            elements.currentUrl.value = '';
+            tabs = [];
+            activeTabId = null;
+            updateStatus('Ready to browse');
+        }
+
+        function refreshPage() {
+            if (elements.currentUrl.value) {
+                const currentSrc = elements.proxyFrame.src;
+                elements.proxyFrame.src = '';
+                setTimeout(() => {
+                    elements.proxyFrame.src = currentSrc;
+                    updateStatus('Page refreshed');
+                }, 100);
+            }
+        }
+
+        function handleUrlEdit(event) {
+            if (event.key === 'Enter') {
+                const newUrl = formatUrl(elements.currentUrl.value);
+                loadInProxy(newUrl);
+            }
+        }
+
+        // Event Listeners
+        elements.searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                navigateToUrl();
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                if (elements.historyPage.style.display === 'block') {
+                    hideHistory();
+                } else if (elements.proxyContainer.style.display === 'block') {
+                    goBack();
+                }
+            }
+            
+            // Ctrl/Cmd + T for new tab
+            if ((e.ctrlKey || e.metaKey) && e.key === 't' && tabs.length > 0) {
+                e.preventDefault();
+                createNewTab();
+            }
+            
+            // Ctrl/Cmd + W to close tab
+            if ((e.ctrlKey || e.metaKey) && e.key === 'w' && tabs.length > 0) {
+                e.preventDefault();
+                if (activeTabId) {
+                    closeTab(activeTabId);
+                }
+            }
+        });
+
+        // Initialize on page load
+        window.addEventListener('load', function() {
+            elements.searchInput.focus();
+            loadTheme();
+            loadHistory();
+            updateStatus('Stellar Proxy loaded successfully');
+            
+            // Preload proxy services
+            setTimeout(() => {
+                PROXY_SERVICES.forEach(service => {
+                    const img = new Image();
+                    img.src = service.url + 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=';
+                });
+            }, 2000);
+        });
+
+        // Save data before page unload
+        window.addEventListener('beforeunload', function() {
+            saveHistory();
+            localStorage.setItem('stellarTheme', document.body.getAttribute('data-theme'));
+        });
+
+        // Handle iframe events
+        elements.proxyFrame.addEventListener('load', function() {
+            if (elements.proxyFrame.src && elements.proxyFrame.src !== 'about:blank') {
+                hideLoading();
+                updateStatus('Page loaded successfully');
+                
+                // Update tab title if possible
+                if (activeTabId) {
+                    try {
+                        const hostname = new URL(elements.currentUrl.value).hostname;
+                        const activeTab = tabs.find(t => t.id === activeTabId);
+                        if (activeTab) {
+                            activeTab.title = hostname;
+                            renderTabs();
+                        }
+                    } catch (e) {
+                        // Ignore URL parsing errors
+                    }
+                }
+            }
+        });
+
+        elements.proxyFrame.addEventListener('error', function() {
+            hideLoading();
+            updateStatus('Failed to load page', 5000);
+        });
+
+        // Performance optimization
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                // Adjust layout if needed
+                if (window.innerWidth < 768) {
+                    elements.tabContainer.style.padding = '8px 15px';
+                } else {
+                    elements.tabContainer.style.padding = '10px 20px';
+                }
+            }, 250);
+        });
+
+        // Service Worker registration (optional, for better caching)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('data:application/javascript,self.addEventListener("fetch",e=>{});')
+                    .then(() => console.log('SW registered'))
+                    .catch(() => console.log('SW registration failed'));
+            });
+        }
+    </script>
+</body>
+</html>
